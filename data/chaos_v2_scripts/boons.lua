@@ -1,4 +1,3 @@
-
 local userdata_table = mods.multiverse.userdata_table
 local vter = mods.multiverse.vter
 local get_room_at_location = mods.multiverse.get_room_at_location
@@ -6,14 +5,6 @@ local Brightness = mods.brightness
 local lwl = mods.lightweight_lua
 
 --TODO moving the stuff that identifies these weapons to LWL because that's cool and should be centralized.
-
-
---I really want type systems to work with multiple types.
---Yeah, it should be something I can add types to?  Or not?
---Nah, types is a {list of attributes}
---It's a match if it has all of the things you're looking for.  It's an exact match if it has nothing else.
-
---Most things don't have a type name.
 
     --[[
     WEAPONS_BOMBS_CHEAP
@@ -26,29 +17,6 @@ local lwl = mods.lightweight_lua
     BLUELIST_WEAPONS_FIRE_NODAMAGE
     BLUELIST_ANTIBIO
     BLUELIST_PARTICLE
-
-    WEAPONS_ION --FR only probably
-    MV_WEAPONS_ION
-    BLUELIST_ION
-
-    SHOP_VAMPWEED_ITEM_WEAPONS_SPORE
-    SHOP_MANTIS_ITEM_WEAPONS_BOMB
-
-    WEAPONS_MISSILES
-    SHOP_ROCK_ITEM_WEAPONS_MISSILES
-    SHOP_ORCHID_ITEM_WEAPONS_KERNEL
-    SHOP_ITEM_SYLVAN_RUSTY_MISSILES
-
-    SHOP_ITEM_SYLVAN_MINELAUNCHER
-    SHOP_ITEM_SYLVAN_MINELAUNCHER_UNIQUE
-
-    SHOP_ITEM_SYLVAN_FLAK
-    SHOP_ITEM_SYLVAN_FLAK_ELEMENTAL
-    SHOP_ITEM_SYLVAN_ATTRIBUTE
-
-
-    MV_WEAPONS_BEAMS
-    BLUELIST_WEAPONS_BEAM_POWERFUL --fr likely
     ]]
 
 local TYPE_BEAM = {typeName="BEAM", internalName="BEAM", friendlyName="Beam",
@@ -69,7 +37,6 @@ local TYPE_MINELAUNCHER = {internalName="Minelauncher", friendlyName="Mine Launc
 --Secondary Types
 local TYPE_LOOT = "LOOT"
 local TYPE_CHAOS = "CHAOS"
-local TYPE_TURRET = "TURRET" --todo idk if counts
 local WEAPON_TYPES = {TYPE_BEAM, TYPE_LASER, TYPE_FLAK, TYPE_ION, TYPE_MISSILE, TYPE_BOMB, TYPE_MINELAUNCHER}
 
 local mSetupComplete = false
@@ -97,7 +64,7 @@ end
 local function tryFindType(foundTypesWrapper, newType, searchString, source, typeThing)
     if lwl.findIgnoreCase(searchString, typeThing) then
         print("adding type", newType.friendlyName, "from", source)
-        
+        foundTypesWrapper.foundTypes = lwl.setMerge(foundTypesWrapper.foundTypes, {newType})
     end
 end
 
@@ -114,102 +81,103 @@ local function setup()
     mSetupComplete = true
 end
 
-
+--todo more testing of this, but it seems solid.
 function lwl.findWeaponType(weaponName)
     if not mSetupComplete then
         setup()
     end
-    local foundTypesWrapper = {foundTypes={}}--mKnownTypes[weaponName]
-    --print("foundtype", lwl.dumpObject(foundTypesWrapper.foundTypes))
-    --First try to find it in known weapon lists.  todo pinpoint?
+    local foundTypesWrapper = mKnownTypes[weaponName]
+    foundTypesWrapper = lwl.setIfNil(foundTypesWrapper, {foundTypes={}})
+    print("foundtype", lwl.dumpObject(foundTypesWrapper.foundTypes))
+
+    --First try to find it in known weapon lists.  todo add seperate pinpoints?
     --If I really wanted to max perf, I could remove things from the list to check once I find them.
-    local source = "bluelists"
-    -- for _,type in ipairs(WEAPON_TYPES) do
-    --     for _,listItem in ipairs(type.flatlist) do
-    --         if weaponName == listItem then
-    --             foundTypesWrapper.foundTypes = lwl.setMerge(foundTypesWrapper.foundTypes, {type})
-    --             print("adding type", type.friendlyName, "from", source)
-    --             break
-    --         end
-    --     end
-    -- end
-
-
-    --If we can't find it in any lists, look at the blueprint.
-    if #(foundTypesWrapper.foundTypes) == 0 then
-        local weaponBlueprint = mBlueprintManager:GetWeaponBlueprint(weaponName)
-        print("Finding weapon type", weaponBlueprint.name, weaponBlueprint:GetNameLong(), weaponBlueprint.desc.title:GetText(),
-        weaponBlueprint.desc.description:GetText(), weaponBlueprint.desc.tooltip:GetText(), weaponBlueprint.typeName, weaponBlueprint.flavorType:GetText())
-
-        source = "type name"
-        if weaponBlueprint.typeName == TYPE_BEAM.typeName then
-            foundTypesWrapper.foundTypes = {TYPE_BEAM}
-            print("adding type", TYPE_BEAM.friendlyName, "from", source)
-            --todo a pinpoint is a beam with length <=2
-        elseif weaponBlueprint.typeName == TYPE_BOMB.typeName then
-            foundTypesWrapper.foundTypes = {TYPE_BOMB}
-            print("adding type", TYPE_BOMB.friendlyName, "from", source)
-        elseif weaponBlueprint.typeName == TYPE_MISSILE.typeName then
-            foundTypesWrapper.foundTypes = {TYPE_MISSILE}
-            print("adding type", TYPE_MISSILE.friendlyName, "from", source)
+    if #foundTypesWrapper.foundTypes == 0 then
+        local source = "bluelists"
+        for _,type in ipairs(WEAPON_TYPES) do
+            for _,listItem in ipairs(type.flatlist) do
+                if weaponName == listItem then
+                    foundTypesWrapper.foundTypes = lwl.setMerge(foundTypesWrapper.foundTypes, {type})
+                    print("adding type", type.friendlyName, "from", source)
+                    break
+                end
+            end
         end
 
-        source = "BLUEPRINT_NAME"
-        local searchString = weaponBlueprint.name
-        for _,type in ipairs(WEAPON_TYPES) do
-            tryFindType(foundTypesWrapper, type, searchString, source, type.internalName)
-        end
+        --If we can't find it in any lists, look at the blueprint.
+        if #foundTypesWrapper.foundTypes == 0 then
+            local weaponBlueprint = mBlueprintManager:GetWeaponBlueprint(weaponName)
+            print("Finding weapon type", weaponBlueprint.name, weaponBlueprint:GetNameLong(), weaponBlueprint.desc.title:GetText(),
+            weaponBlueprint.desc.description:GetText(), weaponBlueprint.desc.tooltip:GetText(), weaponBlueprint.typeName, weaponBlueprint.flavorType:GetText())
 
-        source = "ITEM_NAME"
-        searchString = weaponBlueprint:GetNameLong()
-        for _,type in ipairs(WEAPON_TYPES) do
-            tryFindType(foundTypesWrapper, type, searchString, source, type.internalName)
-        end
-        for _,type in ipairs(WEAPON_TYPES) do
-            tryFindType(foundTypesWrapper, type, searchString, source, type.friendlyName)
-        end
-        
-        source = "DESCRIPTION"
-        searchString = weaponBlueprint.desc.description:GetText()
-        for _,type in ipairs(WEAPON_TYPES) do
-            tryFindType(foundTypesWrapper, type, searchString, source, type.internalName)
-        end
-        for _,type in ipairs(WEAPON_TYPES) do
-            tryFindType(foundTypesWrapper, type, searchString, source, type.friendlyName)
-        end
-        source = "TOOLTIP"
-        searchString = weaponBlueprint.desc.tooltip:GetText()
-        for _,type in ipairs(WEAPON_TYPES) do
-            tryFindType(foundTypesWrapper, type, searchString, source, type.internalName)
-        end
-        for _,type in ipairs(WEAPON_TYPES) do
-            tryFindType(foundTypesWrapper, type, searchString, source, type.friendlyName)
-        end
+            source = "type name"
+            if weaponBlueprint.typeName == TYPE_BEAM.typeName then
+                foundTypesWrapper.foundTypes = {TYPE_BEAM}
+                print("adding type", TYPE_BEAM.friendlyName, "from", source)
+                --todo a pinpoint is a beam with length <=2
+            elseif weaponBlueprint.typeName == TYPE_BOMB.typeName then
+                foundTypesWrapper.foundTypes = {TYPE_BOMB}
+                print("adding type", TYPE_BOMB.friendlyName, "from", source)
+            elseif weaponBlueprint.typeName == TYPE_MISSILE.typeName then
+                foundTypesWrapper.foundTypes = {TYPE_MISSILE}
+                print("adding type", TYPE_MISSILE.friendlyName, "from", source)
+            end
 
-        print("foundtype", lwl.dumpObject(foundTypesWrapper.foundTypes))
-        if #(foundTypesWrapper.foundTypes) == 0 then
-            --Try to determine type based on attributes
-            source = "attributes"
-            local damageValues = weaponBlueprint.damage
-            if damageValues.iIonDamage > 0 and (damageValues.iDamage + damageValues.iSystemDamage <= 0) then
-                foundTypesWrapper.foundTypes = {TYPE_ION}
-                print("adding type", TYPE_ION.friendlyName, "from", source)
-            elseif weaponBlueprint.missiles > 0 then
-                foundTypesWrapper.foundTypes = {TYPE_MINELAUNCHER}
-                print("adding type", TYPE_MINELAUNCHER.friendlyName, "from", source)
-            elseif weaponBlueprint.typeName == "BURST" then
-                foundTypesWrapper.foundTypes = {TYPE_FLAK}
-                print("adding type", TYPE_FLAK.friendlyName, "from", source)
-            else --Default to laser.
-                foundTypesWrapper.foundTypes = {TYPE_LASER}
-                print("adding type", TYPE_LASER.friendlyName, "from", source)
+            source = "BLUEPRINT_NAME"
+            local searchString = weaponBlueprint.name
+            for _,type in ipairs(WEAPON_TYPES) do
+                tryFindType(foundTypesWrapper, type, searchString, source, type.internalName)
+            end
+
+            source = "ITEM_NAME"
+            searchString = weaponBlueprint:GetNameLong()
+            for _,type in ipairs(WEAPON_TYPES) do
+                tryFindType(foundTypesWrapper, type, searchString, source, type.internalName)
+            end
+            for _,type in ipairs(WEAPON_TYPES) do
+                tryFindType(foundTypesWrapper, type, searchString, source, type.friendlyName)
+            end
+            
+            source = "DESCRIPTION"
+            searchString = weaponBlueprint.desc.description:GetText()
+            for _,type in ipairs(WEAPON_TYPES) do
+                tryFindType(foundTypesWrapper, type, searchString, source, type.internalName)
+            end
+            for _,type in ipairs(WEAPON_TYPES) do
+                tryFindType(foundTypesWrapper, type, searchString, source, type.friendlyName)
+            end
+            source = "TOOLTIP"
+            searchString = weaponBlueprint.desc.tooltip:GetText()
+            for _,type in ipairs(WEAPON_TYPES) do
+                tryFindType(foundTypesWrapper, type, searchString, source, type.internalName)
+            end
+            for _,type in ipairs(WEAPON_TYPES) do
+                tryFindType(foundTypesWrapper, type, searchString, source, type.friendlyName)
+            end
+
+            print("foundtype", lwl.dumpObject(foundTypesWrapper.foundTypes))
+            if #foundTypesWrapper.foundTypes == 0 then
+                --Try to determine type based on attributes
+                source = "attributes"
+                local damageValues = weaponBlueprint.damage
+                if damageValues.iIonDamage > 0 and (damageValues.iDamage + damageValues.iSystemDamage <= 0) then
+                    foundTypesWrapper.foundTypes = {TYPE_ION}
+                    print("adding type", TYPE_ION.friendlyName, "from", source)
+                elseif weaponBlueprint.missiles > 0 then
+                    foundTypesWrapper.foundTypes = {TYPE_MINELAUNCHER}
+                    print("adding type", TYPE_MINELAUNCHER.friendlyName, "from", source)
+                elseif weaponBlueprint.typeName == "BURST" then
+                    foundTypesWrapper.foundTypes = {TYPE_FLAK}
+                    print("adding type", TYPE_FLAK.friendlyName, "from", source)
+                else --Default to laser.
+                    foundTypesWrapper.foundTypes = {TYPE_LASER}
+                    print("adding type", TYPE_LASER.friendlyName, "from", source)
+                end
             end
         end
     end
---For each weapon type, check against the internal lists for that type.
---Get weapon name, description.
     
-    --todo add mKnownTypes[weaponName] = foundType
+    mKnownTypes[weaponName] = foundTypesWrapper
     return foundTypesWrapper.foundTypes
 end
 
