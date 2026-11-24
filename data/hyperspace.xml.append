@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<FTL>
+	<mod:findLike type="scripts">
+		<mod-append:script>data/chaos_v2_scripts/init.lua</mod-append:script>
+		<mod-append:script>data/chaos_v2_scripts/boons.lua</mod-append:script>
+	</mod:findLike>
+</FTL>
+
+<customTextStyle enabled="true"/>

@@ -1,0 +1,19 @@
+<metadata>
+  <title><![CDATA[ Neo/Chaos ]]></title>
+  <threadUrl><![CDATA[https://github.com/neopryne/Grimdark-Expy/tree/main]]></threadUrl>
+  <author><![CDATA[ Limrix, Nauter, idk ]]></author>
+  <version><![CDATA[ 0.2 ]]></version>
+  <description>
+<![CDATA[
+# Contracts
+Adds boons you can take with commiserate downsides.
+
+
+### Requirements:
+[Lightweight Lua](https://github.com/neopryne/FTL-Crew-Equipment-Library) ??.??+
+
+### Modding
+To see if this mod is present, check if mods.neo_chaos is nil.
+]]>
+  </description>
+</metadata>
